@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MediaType } from '@/lib/tmdb'
@@ -58,8 +59,8 @@ export async function toggleWatchlist(
       .eq('user_id', user.id)
       .eq('tmdb_id', tmdbId)
       .eq('media_type', mediaType)
-    console.log('[toggleWatchlist] delete error:', error?.message ?? 'none')
     if (error) return { error: error.message }
+    revalidatePath('/profil')
     return { listType: null as string | null }
   } else {
     const { data, error } = await admin
@@ -69,8 +70,8 @@ export async function toggleWatchlist(
         { onConflict: 'user_id,tmdb_id,media_type' }
       )
       .select()
-    console.log('[toggleWatchlist] upsert data:', JSON.stringify(data), 'error:', error?.message ?? 'none')
     if (error) return { error: error.message }
+    revalidatePath('/profil')
     return { listType: target as string | null }
   }
 }
@@ -91,4 +92,36 @@ export async function getUserLists(): Promise<string[]> {
 export async function getWatchlistStatus(tmdbId: number, mediaType: MediaType) {
   const data = await getWatchlistData(tmdbId, mediaType)
   return { user: data.user, listType: data.listType }
+}
+
+export async function removeFromList(id: string) {
+  const user = await getAuthUser()
+  if (!user) return { error: 'Non connecté' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('user_media_lists')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/profil')
+  return {}
+}
+
+export async function deleteList(userId: string, listType: string) {
+  const user = await getAuthUser()
+  if (!user) return { error: 'Non connecté' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('user_media_lists')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('list_type', listType)
+
+  if (error) return { error: error.message }
+  revalidatePath('/profil')
+  return {}
 }
