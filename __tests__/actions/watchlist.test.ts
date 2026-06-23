@@ -1,7 +1,6 @@
 import { removeFromList, deleteList } from '@/app/actions/watchlist'
 
 // Mock Supabase admin client
-const mockDelete = jest.fn()
 const mockEq = jest.fn(() => ({ eq: mockEq, error: null }))
 const mockFrom = jest.fn(() => ({ delete: () => ({ eq: mockEq }) }))
 
@@ -37,6 +36,8 @@ describe('removeFromList', () => {
   it('calls delete on user_media_lists with correct id and user_id', async () => {
     await removeFromList('item-abc')
     expect(mockFrom).toHaveBeenCalledWith('user_media_lists')
+    expect(mockEq).toHaveBeenCalledWith('id', 'item-abc')
+    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-123')
   })
 })
 
@@ -45,12 +46,14 @@ describe('deleteList', () => {
     mockCreateClient.mockReturnValueOnce({
       auth: { getUser: async () => ({ data: { user: null }, error: null }) },
     })
-    const result = await deleteList('user-123', 'ma-liste')
+    const result = await deleteList('ma-liste')
     expect(result).toEqual({ error: 'Non connecté' })
   })
 
   it('calls delete on user_media_lists filtering by user_id and list_type', async () => {
-    await deleteList('user-123', 'ma-liste')
+    await deleteList('ma-liste')
     expect(mockFrom).toHaveBeenCalledWith('user_media_lists')
+    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-123')
+    expect(mockEq).toHaveBeenCalledWith('list_type', 'ma-liste')
   })
 })

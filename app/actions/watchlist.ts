@@ -7,8 +7,7 @@ import type { MediaType } from '@/lib/tmdb'
 
 async function getAuthUser() {
   const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  console.log('[auth] user:', user?.id ?? 'null', 'error:', error?.message ?? 'none')
+  const { data: { user } } = await supabase.auth.getUser()
   return user
 }
 
@@ -110,7 +109,7 @@ export async function removeFromList(id: string) {
   return {}
 }
 
-export async function deleteList(userId: string, listType: string) {
+export async function deleteList(listType: string) {
   const user = await getAuthUser()
   if (!user) return { error: 'Non connecté' }
 
