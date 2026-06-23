@@ -168,6 +168,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
             isEditing={false}
             onToggleEdit={() => {}}
             canDelete={false}
+            showEditButton={false}
           >
             {recommendations.length === 0 ? (
               <p className="text-[var(--text-muted)] text-xs">Marquez des médias comme &quot;Déjà vu&quot; pour recevoir des recommandations.</p>
@@ -210,6 +211,7 @@ interface SectionProps {
   onRequestDelete?: () => void
   onCancelDelete?: () => void
   onConfirmDelete?: () => void
+  showEditButton?: boolean
 }
 
 function Section({
@@ -222,27 +224,30 @@ function Section({
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
+  showEditButton = true,
 }: SectionProps) {
   return (
     <div className="mb-8">
       <div className={`flex items-center justify-between mb-3 pb-2 border-b ${isEditing ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}>
         <h2 className="text-[var(--text)] text-sm font-medium">{title}</h2>
-        <div className="flex items-center gap-3">
-          {isEditing && canDelete && (
+        {showEditButton !== false && (
+          <div className="flex items-center gap-3">
+            {isEditing && canDelete && (
+              <button
+                onClick={onRequestDelete}
+                className="text-red-400 text-xs hover:text-red-300 transition-colors"
+              >
+                Supprimer la liste
+              </button>
+            )}
             <button
-              onClick={onRequestDelete}
-              className="text-red-400 text-xs hover:text-red-300 transition-colors"
+              onClick={onToggleEdit}
+              className="text-[var(--text-muted)] text-xs border border-[var(--border)] px-2 py-1 rounded hover:border-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
             >
-              Supprimer la liste
+              {isEditing ? 'Terminer' : 'Modifier'}
             </button>
-          )}
-          <button
-            onClick={onToggleEdit}
-            className="text-[var(--text-muted)] text-xs border border-[var(--border)] px-2 py-1 rounded hover:border-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
-          >
-            {isEditing ? 'Terminer' : 'Modifier'}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {confirmingDelete && (
