@@ -40,6 +40,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
   const router = useRouter()
   const [editingList, setEditingList] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   async function logout() {
     const supabase = createClient()
@@ -48,12 +49,23 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
   }
 
   async function handleRemoveItem(id: string) {
-    await removeFromList(id)
+    if (!id) return
+    const result = await removeFromList(id)
+    if ('error' in result) {
+      setActionError((result as { error: string }).error)
+      return
+    }
+    setActionError(null)
     router.refresh()
   }
 
   async function handleDeleteList(listType: string) {
-    await deleteList(listType)
+    const result = await deleteList(listType)
+    if ('error' in result) {
+      setActionError((result as { error: string }).error)
+      return
+    }
+    setActionError(null)
     setEditingList(null)
     setConfirmDelete(null)
     router.refresh()
@@ -116,13 +128,25 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
 
         {/* Contenu principal */}
         <main className="flex-1 min-w-0">
+          {actionError && (
+            <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400">
+              {actionError}
+            </div>
+          )}
           {/* Listes fixes */}
           {FIXED_ORDER.map(key => (
             <Section
               key={key}
               title={`${listLabel(key)} (${(grouped[key] ?? []).length})`}
               isEditing={editingList === key}
-              onToggleEdit={() => setEditingList(editingList === key ? null : key)}
+              onToggleEdit={() => {
+                if (editingList === key) {
+                  setEditingList(null)
+                  setConfirmDelete(null)
+                } else {
+                  setEditingList(key)
+                }
+              }}
               canDelete={false}
             >
               {(grouped[key] ?? []).length === 0 ? (
@@ -147,18 +171,29 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
               key={key}
               title={`${listLabel(key)} (${grouped[key].length})`}
               isEditing={editingList === key}
-              onToggleEdit={() => setEditingList(editingList === key ? null : key)}
+              onToggleEdit={() => {
+                if (editingList === key) {
+                  setEditingList(null)
+                  setConfirmDelete(null)
+                } else {
+                  setEditingList(key)
+                }
+              }}
               canDelete={true}
               confirmingDelete={confirmDelete === key}
               onRequestDelete={() => setConfirmDelete(key)}
               onCancelDelete={() => setConfirmDelete(null)}
               onConfirmDelete={() => handleDeleteList(key)}
             >
-              <MediaMiniGrid
-                items={grouped[key]}
-                isEditing={editingList === key}
-                onRemove={handleRemoveItem}
-              />
+              {grouped[key].length === 0 ? (
+                <p className="text-[var(--text-muted)] text-xs">Cette liste est vide.</p>
+              ) : (
+                <MediaMiniGrid
+                  items={grouped[key]}
+                  isEditing={editingList === key}
+                  onRemove={handleRemoveItem}
+                />
+              )}
             </Section>
           ))}
 
@@ -230,7 +265,7 @@ function Section({
     <div className="mb-8">
       <div className={`flex items-center justify-between mb-3 pb-2 border-b ${isEditing ? 'border-[var(--accent)]' : 'border-[var(--border)]'}`}>
         <h2 className="text-[var(--text)] text-sm font-medium">{title}</h2>
-        {showEditButton !== false && (
+        {showEditButton && (
           <div className="flex items-center gap-3">
             {isEditing && canDelete && (
               <button
@@ -310,7 +345,7 @@ function MediaMiniGrid({ items, isEditing = false, onRemove }: MediaMiniGridProp
           </Link>
           {isEditing && (
             <button
-              onClick={() => onRemove?.(item.id)}
+              onClick={() => { if (item.id) onRemove?.(item.id) }}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold z-10 transition-colors"
               title={`Retirer ${item.title ?? ''}`}
             >
