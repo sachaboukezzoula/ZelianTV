@@ -139,3 +139,60 @@ export async function deleteList(listType: string) {
   revalidatePath('/profil')
   return {}
 }
+
+export async function reorderItems(
+  listType: string,
+  orderedIds: string[],
+): Promise<{ error: string } | Record<string, never>> {
+  const ctx = await getAuthContext()
+  if (!ctx) return { error: 'Non connecté' }
+
+  const admin = createAdminClient()
+
+  const updates = orderedIds.map((id, index) =>
+    admin
+      .from('user_media_lists')
+      .update({ sort_order: index })
+      .eq('id', id)
+      .eq('profile_id', ctx.profileId)
+  )
+
+  const results = await Promise.all(updates)
+  const failed = results.find(r => r.error)
+  if (failed?.error) return { error: failed.error.message }
+
+  revalidatePath('/profil')
+  return {}
+}
+
+export async function moveToList(
+  id: string,
+  newListType: string,
+): Promise<{ error: string } | Record<string, never>> {
+  const ctx = await getAuthContext()
+  if (!ctx) return { error: 'Non connecté' }
+
+  const admin = createAdminClient()
+
+  const { data: maxData } = await admin
+    .from('user_media_lists')
+    .select('sort_order')
+    .eq('profile_id', ctx.profileId)
+    .eq('list_type', newListType)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextOrder = (maxData?.sort_order ?? -1) + 1
+
+  const { error } = await admin
+    .from('user_media_lists')
+    .update({ list_type: newListType, sort_order: nextOrder })
+    .eq('id', id)
+    .eq('profile_id', ctx.profileId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/profil')
+  return {}
+}
