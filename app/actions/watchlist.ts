@@ -1,19 +1,26 @@
+// app/actions/watchlist.ts
 'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveProfileIdFromCookie } from '@/lib/profile'
 import type { MediaType } from '@/lib/tmdb'
 
-async function getAuthUser() {
+async function getAuthContext() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  return user
+  if (!user) return null
+
+  const profileId = await getActiveProfileIdFromCookie()
+  if (!profileId) return null
+
+  return { userId: user.id, profileId }
 }
 
 export async function getWatchlistData(tmdbId: number, mediaType: MediaType) {
-  const user = await getAuthUser()
-  if (!user) return { user: null, listType: null, allLists: [] as string[] }
+  const ctx = await getAuthContext()
+  if (!ctx) return { user: null, listType: null, allLists: [] as string[] }
 
   const admin = createAdminClient()
 
@@ -21,20 +28,20 @@ export async function getWatchlistData(tmdbId: number, mediaType: MediaType) {
     admin
       .from('user_media_lists')
       .select('list_type')
-      .eq('user_id', user.id)
+      .eq('profile_id', ctx.profileId)
       .eq('tmdb_id', tmdbId)
       .eq('media_type', mediaType)
       .maybeSingle(),
     admin
       .from('user_media_lists')
       .select('list_type')
-      .eq('user_id', user.id),
+      .eq('profile_id', ctx.profileId),
   ])
 
   const allLists = [...new Set((listsResult.data ?? []).map((d: { list_type: string }) => d.list_type))]
 
   return {
-    user: user.id,
+    user: ctx.userId,
     listType: (itemResult.data?.list_type ?? null) as string | null,
     allLists,
   }
@@ -44,10 +51,12 @@ export async function toggleWatchlist(
   tmdbId: number,
   mediaType: MediaType,
   target: string,
-  currentListType: string | null
+  currentListType: string | null,
+  posterPath?: string | null,
+  title?: string | null,
 ) {
-  const user = await getAuthUser()
-  if (!user) return { error: 'Non connecté' }
+  const ctx = await getAuthContext()
+  if (!ctx) return { error: 'Non connecté' }
 
   const admin = createAdminClient()
 
@@ -55,18 +64,24 @@ export async function toggleWatchlist(
     const { error } = await admin
       .from('user_media_lists')
       .delete()
-      .eq('user_id', user.id)
+      .eq('profile_id', ctx.profileId)
       .eq('tmdb_id', tmdbId)
       .eq('media_type', mediaType)
     if (error) return { error: error.message }
     revalidatePath('/profil')
     return { listType: null as string | null }
   } else {
-    const { data, error } = await admin
+    const { error } = await admin
       .from('user_media_lists')
       .upsert(
-        { user_id: user.id, tmdb_id: tmdbId, media_type: mediaType, list_type: target },
-        { onConflict: 'user_id,tmdb_id,media_type' }
+        {
+          user_id: ctx.userId,
+          profile_id: ctx.profileId,
+          tmdb_id: tmdbId,
+          media_type: mediaType,
+          list_type: target,
+        },
+        { onConflict: 'profile_id,tmdb_id,media_type' }
       )
       .select()
     if (error) return { error: error.message }
@@ -76,14 +91,14 @@ export async function toggleWatchlist(
 }
 
 export async function getUserLists(): Promise<string[]> {
-  const user = await getAuthUser()
-  if (!user) return []
+  const ctx = await getAuthContext()
+  if (!ctx) return []
 
   const admin = createAdminClient()
   const { data } = await admin
     .from('user_media_lists')
     .select('list_type')
-    .eq('user_id', user.id)
+    .eq('profile_id', ctx.profileId)
 
   return [...new Set((data ?? []).map((d: { list_type: string }) => d.list_type))]
 }
@@ -94,15 +109,15 @@ export async function getWatchlistStatus(tmdbId: number, mediaType: MediaType) {
 }
 
 export async function removeFromList(id: string) {
-  const user = await getAuthUser()
-  if (!user) return { error: 'Non connecté' }
+  const ctx = await getAuthContext()
+  if (!ctx) return { error: 'Non connecté' }
 
   const admin = createAdminClient()
   const { error } = await admin
     .from('user_media_lists')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('profile_id', ctx.profileId)
 
   if (error) return { error: error.message }
   revalidatePath('/profil')
@@ -110,14 +125,14 @@ export async function removeFromList(id: string) {
 }
 
 export async function deleteList(listType: string) {
-  const user = await getAuthUser()
-  if (!user) return { error: 'Non connecté' }
+  const ctx = await getAuthContext()
+  if (!ctx) return { error: 'Non connecté' }
 
   const admin = createAdminClient()
   const { error } = await admin
     .from('user_media_lists')
     .delete()
-    .eq('user_id', user.id)
+    .eq('profile_id', ctx.profileId)
     .eq('list_type', listType)
 
   if (error) return { error: error.message }
