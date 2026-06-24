@@ -87,6 +87,7 @@ interface DroppableMiniGridProps {
   items: MediaListItem[]
   listType: string
   isDragActive: boolean
+  isOverList?: boolean
   isEditing: boolean
   emptyText: string
   onRemove?: (id: string) => void
@@ -96,6 +97,7 @@ export function DroppableMiniGrid({
   items,
   listType,
   isDragActive,
+  isOverList,
   isEditing,
   emptyText,
   onRemove,
@@ -105,7 +107,7 @@ export function DroppableMiniGrid({
     data: { listType },
   })
 
-  const highlight = isDragActive && isOver
+  const highlight = isDragActive && (isOver || !!isOverList)
 
   const itemIds = useMemo(() => items.map(i => i.id), [items])
 

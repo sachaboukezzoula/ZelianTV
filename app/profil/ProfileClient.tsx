@@ -19,7 +19,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { MediaListItem } from './DndMedia'
 import { DroppableMiniGrid, GhostPoster } from './DndMedia'
@@ -203,6 +203,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
     }, {} as Record<string, MediaListItem[]>)
   )
   const [activeItem, setActiveItem] = useState<MediaListItem | null>(null)
+  const [overListType, setOverListType] = useState<string | null>(null)
 
   useEffect(() => {
     setLocalGrouped(
@@ -231,11 +232,20 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
     const listType = event.active.data.current?.listType as string
     const item = (localGrouped[listType] ?? []).find(i => i.id === id) ?? null
     setActiveItem(item)
+    setOverListType(null)
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { over } = event
+    if (!over) { setOverListType(null); return }
+    const lt = (over.data.current?.listType as string | undefined) ?? String(over.id)
+    setOverListType(lt)
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveItem(null)
+    setOverListType(null)
     if (!over) return
 
     const activeId = String(active.id)
@@ -459,6 +469,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             {/* Listes fixes */}
@@ -481,6 +492,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
                   items={localGrouped[key] ?? []}
                   listType={key}
                   isDragActive={activeItem !== null}
+                  isOverList={overListType === key}
                   isEditing={editingList === key}
                   emptyText={
                     key === 'watchlist'
@@ -516,6 +528,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
                   items={localGrouped[key] ?? []}
                   listType={key}
                   isDragActive={activeItem !== null}
+                  isOverList={overListType === key}
                   isEditing={editingList === key}
                   emptyText="Cette liste est vide."
                   onRemove={handleRemoveItem}
