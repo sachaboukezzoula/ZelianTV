@@ -74,7 +74,7 @@ export async function updateProfile(
   name: string,
   avatarUrl: string | null,
   color: string,
-): Promise<{ error: string } | {}> {
+): Promise<{ error: string } | Record<string, never>> {
   const user = await getAuthUser()
   if (!user) return { error: 'Non connecté' }
 
@@ -95,7 +95,7 @@ export async function updateProfile(
   return {}
 }
 
-export async function deleteProfile(id: string): Promise<{ error: string } | {}> {
+export async function deleteProfile(id: string): Promise<{ error: string } | Record<string, never>> {
   const user = await getAuthUser()
   if (!user) return { error: 'Non connecté' }
 
@@ -127,7 +127,7 @@ export async function deleteProfile(id: string): Promise<{ error: string } | {}>
   return {}
 }
 
-export async function setActiveProfile(profileId: string): Promise<{ error: string } | {}> {
+export async function setActiveProfile(profileId: string): Promise<{ error: string } | Record<string, never>> {
   const user = await getAuthUser()
   if (!user) return { error: 'Non connecté' }
 
