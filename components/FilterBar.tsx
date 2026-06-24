@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Genre } from '@/lib/tmdb'
 
@@ -11,6 +11,7 @@ interface Props {
 export function FilterBar({ genres }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
   const type = searchParams.get('type') ?? 'movie'
   const genreId = searchParams.get('genre') ?? ''
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -20,19 +21,29 @@ export function FilterBar({ genres }: Props) {
     if (value) params.set(key, value)
     else params.delete(key)
     if (key === 'type') params.delete('genre')
-    router.push(`/?${params.toString()}`)
+    startTransition(() => { router.push(`/?${params.toString()}`) })
   }
 
   const scroll = useCallback((dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' })
+    const el = scrollRef.current
+    if (!el) return
+    const atStart = el.scrollLeft <= 0
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
+    if (dir === 'left' && atStart) {
+      el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' })
+    } else if (dir === 'right' && atEnd) {
+      el.scrollTo({ left: 0, behavior: 'smooth' })
+    } else {
+      el.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' })
+    }
   }, [])
 
   return (
-    <div className="w-full border-b border-[#1e1e1e] relative flex items-center">
+    <div className={`w-full border-b border-[#1e1e1e] relative flex items-center transition-opacity ${isPending ? 'opacity-60' : 'opacity-100'}`}>
       {/* Flèche gauche */}
       <button
         onClick={() => scroll('left')}
-        className="shrink-0 z-10 flex items-center justify-center w-8 py-2.5 text-[#666] hover:text-white hover:bg-[#ffffff10] transition-colors"
+        className="filter-arrow-btn"
         aria-label="Défiler à gauche"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -47,7 +58,7 @@ export function FilterBar({ genres }: Props) {
       >
         <button
           onClick={() => setParam('type', 'movie')}
-          className={`shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors ${
+          className={`shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
             type === 'movie'
               ? 'bg-[#f97316] text-white'
               : 'text-[#666] border border-[#2a2a2a] hover:border-[#444]'
@@ -57,7 +68,7 @@ export function FilterBar({ genres }: Props) {
         </button>
         <button
           onClick={() => setParam('type', 'tv')}
-          className={`shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors ${
+          className={`shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
             type === 'tv'
               ? 'bg-[#f97316] text-white'
               : 'text-[#666] border border-[#2a2a2a] hover:border-[#444]'
@@ -72,7 +83,7 @@ export function FilterBar({ genres }: Props) {
           <button
             key={g.id}
             onClick={() => setParam('genre', genreId === String(g.id) ? '' : String(g.id))}
-            className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full transition-colors ${
+            className={`shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
               genreId === String(g.id)
                 ? 'bg-[#f97316]/20 text-[#f97316] border border-[#f97316]'
                 : 'bg-[#1c1c1c] text-[#666] hover:text-[#999]'
@@ -86,7 +97,7 @@ export function FilterBar({ genres }: Props) {
       {/* Flèche droite */}
       <button
         onClick={() => scroll('right')}
-        className="shrink-0 z-10 flex items-center justify-center w-8 py-2.5 text-[#666] hover:text-white hover:bg-[#ffffff10] transition-colors"
+        className="filter-arrow-btn"
         aria-label="Défiler à droite"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

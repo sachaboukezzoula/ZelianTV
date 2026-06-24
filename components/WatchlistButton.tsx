@@ -18,14 +18,18 @@ function label(listType: string): string {
 interface Props {
   tmdbId: number
   mediaType: MediaType
+  posterPath?: string | null
+  title?: string | null
 }
 
-export function WatchlistButton({ tmdbId, mediaType }: Props) {
+export function WatchlistButton({ tmdbId, mediaType, posterPath, title }: Props) {
   const { allLists, addList } = useListsContext()
   const [listType, setListType] = useState<string | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -59,7 +63,7 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
 
     // Sync DB en arrière-plan (sans annuler l'état local si erreur)
     startTransition(async () => {
-      await toggleWatchlist(tmdbId, mediaType, target, listType)
+      await toggleWatchlist(tmdbId, mediaType, target, listType, posterPath, title)
     })
   }
 
@@ -91,11 +95,26 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
       <button
         onClick={() => setIsOpen(o => !o)}
         disabled={isPending}
-        className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border transition-colors disabled:opacity-60 ${
-          listType
-            ? 'bg-[#f97316] border-[#f97316] text-white'
-            : 'border-[#f97316] text-[#f97316] hover:bg-[#f97316]/10'
-        }`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border disabled:opacity-60"
+        style={{
+          cursor: 'pointer',
+          transition: 'background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease',
+          transform: hovered ? 'scale(1.04)' : 'scale(1)',
+          ...(listType
+            ? {
+                backgroundColor: hovered ? '#fb923c' : '#f97316',
+                borderColor: '#f97316',
+                color: '#fff',
+              }
+            : {
+                backgroundColor: hovered ? 'rgba(249,115,22,0.12)' : 'transparent',
+                borderColor: '#f97316',
+                color: '#f97316',
+              }
+          ),
+        }}
       >
         {listType ? (
           <><span>✓</span><span>Ajouté</span><span className="opacity-50 text-[9px] ml-0.5">— {label(listType)}</span><span className="opacity-60 text-[10px] ml-1">▾</span></>
@@ -113,11 +132,17 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
             <button
               key={l}
               onClick={() => selectList(l)}
-              className={`w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5 hover:bg-[#252525] transition-colors ${
-                listType === l ? 'text-[#f97316]' : 'text-[#ccc]'
-              }`}
+              onMouseEnter={() => setHoveredItem(l)}
+              onMouseLeave={() => setHoveredItem(null)}
+              className="w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5"
+              style={{
+                cursor: 'pointer',
+                backgroundColor: hoveredItem === l ? '#252525' : 'transparent',
+                color: listType === l ? '#f97316' : '#ccc',
+                transition: 'background-color 0.12s ease',
+              }}
             >
-              <span className={`w-3 text-center text-[10px] ${listType === l ? 'opacity-100' : 'opacity-0'}`}>✓</span>
+              <span style={{ width: 12, textAlign: 'center', fontSize: 10, opacity: listType === l ? 1 : 0 }}>✓</span>
               {FIXED_LABELS[l]}
             </button>
           ))}
@@ -130,11 +155,17 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
                 <button
                   key={l}
                   onClick={() => selectList(l)}
-                  className={`w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5 hover:bg-[#252525] transition-colors ${
-                    listType === l ? 'text-[#f97316]' : 'text-[#ccc]'
-                  }`}
+                  onMouseEnter={() => setHoveredItem(l)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className="w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5"
+                  style={{
+                    cursor: 'pointer',
+                    backgroundColor: hoveredItem === l ? '#252525' : 'transparent',
+                    color: listType === l ? '#f97316' : '#ccc',
+                    transition: 'background-color 0.12s ease',
+                  }}
                 >
-                  <span className={`w-3 text-center text-[10px] ${listType === l ? 'opacity-100' : 'opacity-0'}`}>✓</span>
+                  <span style={{ width: 12, textAlign: 'center', fontSize: 10, opacity: listType === l ? 1 : 0 }}>✓</span>
                   {l}
                 </button>
               ))}
@@ -147,9 +178,17 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
               <div className="h-px bg-[#2a2a2a] mx-2 my-1" />
               <button
                 onClick={() => selectList(listType)}
-                className="w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5 text-[#555] hover:text-[#888] hover:bg-[#252525] transition-colors"
+                onMouseEnter={() => setHoveredItem('__remove__')}
+                onMouseLeave={() => setHoveredItem(null)}
+                className="w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5"
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: hoveredItem === '__remove__' ? '#252525' : 'transparent',
+                  color: hoveredItem === '__remove__' ? '#888' : '#555',
+                  transition: 'background-color 0.12s ease, color 0.12s ease',
+                }}
               >
-                <span className="w-3 text-center text-[10px]">✕</span>
+                <span style={{ width: 12, textAlign: 'center', fontSize: 10 }}>✕</span>
                 Retirer de la liste
               </button>
             </>
@@ -172,7 +211,8 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
               />
               <button
                 onClick={createList}
-                className="text-[#f97316] text-xs font-medium hover:text-orange-400 transition-colors"
+                className="text-[#f97316] text-xs font-medium"
+                style={{ cursor: 'pointer' }}
               >
                 OK
               </button>
@@ -180,9 +220,17 @@ export function WatchlistButton({ tmdbId, mediaType }: Props) {
           ) : (
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5 text-[#f97316] hover:bg-[#252525] transition-colors"
+              onMouseEnter={() => setHoveredItem('__create__')}
+              onMouseLeave={() => setHoveredItem(null)}
+              className="w-full text-left px-3 py-2.5 text-xs flex items-center gap-2.5"
+              style={{
+                cursor: 'pointer',
+                backgroundColor: hoveredItem === '__create__' ? '#252525' : 'transparent',
+                color: '#f97316',
+                transition: 'background-color 0.12s ease',
+              }}
             >
-              <span className="w-3 text-center text-base leading-none">+</span>
+              <span style={{ width: 12, textAlign: 'center', fontSize: 16, lineHeight: 1 }}>+</span>
               Créer une liste
             </button>
           )}

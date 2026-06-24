@@ -21,7 +21,7 @@ export function MediaRow({ title, items, mediaType }: Props) {
 
   return (
     <section className="py-4 px-4">
-      <h2 className="text-sm font-medium text-gray-200 mb-3">{title}</h2>
+      <h2 className="text-xl font-semibold text-white mb-3">{title}</h2>
       <div className="relative group/row">
         {/* Flèche gauche */}
         <button
