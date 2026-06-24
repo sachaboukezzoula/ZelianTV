@@ -146,6 +146,7 @@ export async function reorderItems(
 ): Promise<{ error: string } | Record<string, never>> {
   const ctx = await getAuthContext()
   if (!ctx) return { error: 'Non connecté' }
+  if (!orderedIds.length) return {}
 
   const admin = createAdminClient()
 
