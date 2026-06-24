@@ -21,7 +21,12 @@ export default async function ProfilPage() {
   const admin = createAdminClient()
 
   const [{ data: lists }, { data: prefs }, { data: profileData }] = await Promise.all([
-    admin.from('user_media_lists').select('*').eq('profile_id', profileId),
+    admin
+      .from('user_media_lists')
+      .select('*')
+      .eq('profile_id', profileId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
     admin.from('user_preferences').select('*').eq('profile_id', profileId).maybeSingle(),
     admin.from('profiles').select('*').eq('id', profileId).eq('user_id', user.id).single(),
   ])

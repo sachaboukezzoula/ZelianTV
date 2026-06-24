@@ -1,26 +1,28 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { getTitle, type Media } from '@/lib/tmdb'
 import Image from 'next/image'
-import { removeFromList, deleteList } from '@/app/actions/watchlist'
+import { removeFromList, deleteList, reorderItems, moveToList } from '@/app/actions/watchlist'
 import { uploadAvatarAction } from '@/app/actions/avatar'
 import { changeEmailAction } from '@/app/actions/profile'
 import type { Profile } from '@/app/actions/profiles'
-
-interface MediaListItem {
-  id: string
-  tmdb_id: number
-  media_type: string
-  list_type: string
-  rating: number | null
-  poster_path: string | null
-  title: string | null
-}
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
+import type { MediaListItem } from './DndMedia'
+import { DroppableMiniGrid, GhostPoster } from './DndMedia'
 
 interface Props {
   user: User
@@ -160,12 +162,19 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
 
   async function handleRemoveItem(id: string) {
     if (!id) return
+    setLocalGrouped(prev => {
+      const next = { ...prev }
+      for (const key of Object.keys(next)) {
+        next[key] = next[key].filter(i => i.id !== id)
+      }
+      return next
+    })
     const result = await removeFromList(id)
     if ('error' in result) {
       setActionError((result as { error: string }).error)
-      return
+    } else {
+      setActionError(null)
     }
-    setActionError(null)
     router.refresh()
   }
 
@@ -181,15 +190,86 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
     router.refresh()
   }
 
-  const grouped = lists.reduce((acc, item) => {
-    if (!acc[item.list_type]) acc[item.list_type] = []
-    acc[item.list_type].push(item)
-    return acc
-  }, {} as Record<string, MediaListItem[]>)
+  const [localGrouped, setLocalGrouped] = useState<Record<string, MediaListItem[]>>(
+    () => lists.reduce((acc, item) => {
+      if (!acc[item.list_type]) acc[item.list_type] = []
+      acc[item.list_type].push(item)
+      return acc
+    }, {} as Record<string, MediaListItem[]>)
+  )
+  const [activeItem, setActiveItem] = useState<MediaListItem | null>(null)
 
-  const watchedCount = (grouped['watched'] ?? []).length
-  const watchlistCount = (grouped['watchlist'] ?? []).length
-  const customKeys = Object.keys(grouped).filter(k => !FIXED_ORDER.includes(k))
+  useEffect(() => {
+    setLocalGrouped(
+      lists.reduce((acc, item) => {
+        if (!acc[item.list_type]) acc[item.list_type] = []
+        acc[item.list_type].push(item)
+        return acc
+      }, {} as Record<string, MediaListItem[]>)
+    )
+  }, [lists])
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  )
+
+  const watchedCount = (localGrouped['watched'] ?? []).length
+  const watchlistCount = (localGrouped['watchlist'] ?? []).length
+  const customKeys = useMemo(
+    () => Object.keys(localGrouped).filter(k => !FIXED_ORDER.includes(k)),
+    [localGrouped]
+  )
+
+  function handleDragStart(event: DragStartEvent) {
+    const id = event.active.id as string
+    const listType = event.active.data.current?.listType as string
+    const item = (localGrouped[listType] ?? []).find(i => i.id === id) ?? null
+    setActiveItem(item)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveItem(null)
+    if (!over) return
+
+    const activeId = active.id as string
+    const activeListType = active.data.current?.listType as string
+    const overListType = (over.data.current?.listType ?? over.id) as string
+
+    if (activeListType === overListType) {
+      const items = localGrouped[activeListType] ?? []
+      const oldIndex = items.findIndex(i => i.id === activeId)
+      if (oldIndex < 0) return
+      const overId = over.id as string
+      let newIndex = items.findIndex(i => i.id === overId)
+      if (newIndex < 0) newIndex = items.length - 1
+      if (oldIndex === newIndex) return
+
+      const reordered = arrayMove(items, oldIndex, newIndex)
+      setLocalGrouped(prev => ({ ...prev, [activeListType]: reordered }))
+      reorderItems(activeListType, reordered.map(i => i.id)).then(result => {
+        if ('error' in result) setActionError((result as { error: string }).error)
+      })
+    } else {
+      const snapshot = { ...localGrouped }
+      const movedItem = (localGrouped[activeListType] ?? []).find(i => i.id === activeId)
+      if (!movedItem) return
+
+      setLocalGrouped(prev => ({
+        ...prev,
+        [activeListType]: (prev[activeListType] ?? []).filter(i => i.id !== activeId),
+        [overListType]: [...(prev[overListType] ?? []), { ...movedItem, list_type: overListType }],
+      }))
+
+      moveToList(activeId, overListType).then(result => {
+        if ('error' in result) {
+          setActionError((result as { error: string }).error)
+          setLocalGrouped(snapshot)
+        }
+      })
+    }
+  }
 
   const editTitles = { pseudo: 'Modifier le pseudo', email: "Modifier l'adresse mail", password: 'Changer le mot de passe' }
 
@@ -365,69 +445,77 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
               {actionError}
             </div>
           )}
-          {/* Listes fixes */}
-          {FIXED_ORDER.map(key => (
-            <Section
-              key={key}
-              title={`${listLabel(key)} (${(grouped[key] ?? []).length})`}
-              isEditing={editingList === key}
-              onToggleEdit={() => {
-                if (editingList === key) {
-                  setEditingList(null)
-                  setConfirmDelete(null)
-                } else {
-                  setEditingList(key)
-                }
-              }}
-              canDelete={false}
-            >
-              {(grouped[key] ?? []).length === 0 ? (
-                <p className="text-[var(--text-muted)] text-xs">
-                  {key === 'watchlist'
-                    ? "Aucun film ou série à voir. Ajoutez des médias depuis la page d'accueil."
-                    : 'Aucun média marqué comme déjà vu.'}
-                </p>
-              ) : (
-                <MediaMiniGrid
-                  items={grouped[key]}
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            {/* Listes fixes */}
+            {FIXED_ORDER.map(key => (
+              <Section
+                key={key}
+                title={`${listLabel(key)} (${(localGrouped[key] ?? []).length})`}
+                isEditing={editingList === key}
+                onToggleEdit={() => {
+                  if (editingList === key) {
+                    setEditingList(null)
+                    setConfirmDelete(null)
+                  } else {
+                    setEditingList(key)
+                  }
+                }}
+                canDelete={false}
+              >
+                <DroppableMiniGrid
+                  items={localGrouped[key] ?? []}
+                  listType={key}
+                  isDragActive={activeItem !== null}
                   isEditing={editingList === key}
+                  emptyText={
+                    key === 'watchlist'
+                      ? "Aucun film ou série à voir. Ajoutez des médias depuis la page d'accueil."
+                      : 'Aucun média marqué comme déjà vu.'
+                  }
                   onRemove={handleRemoveItem}
                 />
-              )}
-            </Section>
-          ))}
+              </Section>
+            ))}
 
-          {/* Listes custom */}
-          {customKeys.map(key => (
-            <Section
-              key={key}
-              title={`${listLabel(key)} (${grouped[key].length})`}
-              isEditing={editingList === key}
-              onToggleEdit={() => {
-                if (editingList === key) {
-                  setEditingList(null)
-                  setConfirmDelete(null)
-                } else {
-                  setEditingList(key)
-                }
-              }}
-              canDelete={true}
-              confirmingDelete={confirmDelete === key}
-              onRequestDelete={() => setConfirmDelete(key)}
-              onCancelDelete={() => setConfirmDelete(null)}
-              onConfirmDelete={() => handleDeleteList(key)}
-            >
-              {grouped[key].length === 0 ? (
-                <p className="text-[var(--text-muted)] text-xs">Cette liste est vide.</p>
-              ) : (
-                <MediaMiniGrid
-                  items={grouped[key]}
+            {/* Listes custom */}
+            {customKeys.map(key => (
+              <Section
+                key={key}
+                title={`${listLabel(key)} (${(localGrouped[key] ?? []).length})`}
+                isEditing={editingList === key}
+                onToggleEdit={() => {
+                  if (editingList === key) {
+                    setEditingList(null)
+                    setConfirmDelete(null)
+                  } else {
+                    setEditingList(key)
+                  }
+                }}
+                canDelete={true}
+                confirmingDelete={confirmDelete === key}
+                onRequestDelete={() => setConfirmDelete(key)}
+                onCancelDelete={() => setConfirmDelete(null)}
+                onConfirmDelete={() => handleDeleteList(key)}
+              >
+                <DroppableMiniGrid
+                  items={localGrouped[key] ?? []}
+                  listType={key}
+                  isDragActive={activeItem !== null}
                   isEditing={editingList === key}
+                  emptyText="Cette liste est vide."
                   onRemove={handleRemoveItem}
                 />
-              )}
-            </Section>
-          ))}
+              </Section>
+            ))}
+
+            <DragOverlay>
+              <GhostPoster item={activeItem} />
+            </DragOverlay>
+          </DndContext>
 
           {/* Recommandations */}
           <Section
@@ -552,50 +640,3 @@ function Section({
   )
 }
 
-interface MediaMiniGridProps {
-  items: MediaListItem[]
-  isEditing?: boolean
-  onRemove?: (id: string) => void
-}
-
-function MediaMiniGrid({ items, isEditing = false, onRemove }: MediaMiniGridProps) {
-  return (
-    <div className="flex gap-2 flex-wrap">
-      {items.map(item => (
-        <div key={item.id ?? item.tmdb_id} className="relative shrink-0">
-          <Link
-            href={`/media/${item.media_type}-${item.tmdb_id}`}
-            title={item.title ?? undefined}
-            className="relative w-20 sm:w-24 aspect-[2/3] rounded overflow-hidden bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] transition-colors block"
-            onClick={isEditing ? (e) => e.preventDefault() : undefined}
-          >
-            {item.poster_path ? (
-              <Image
-                src={`https://image.tmdb.org/t/p/w200${item.poster_path}`}
-                alt={item.title ?? ''}
-                fill
-                sizes="(min-width: 640px) 96px, 80px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                  <rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                </svg>
-              </div>
-            )}
-          </Link>
-          {isEditing && (
-            <button
-              onClick={() => { if (item.id) onRemove?.(item.id) }}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold z-10 transition-colors"
-              title={`Retirer ${item.title ?? ''}`}
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
