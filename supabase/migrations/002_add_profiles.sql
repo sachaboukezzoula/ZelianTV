@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_profiles_user_id ON profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
