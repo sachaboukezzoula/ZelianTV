@@ -162,7 +162,11 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
 
   async function handleRemoveItem(id: string) {
     if (!id) return
+    let capturedSnapshot: Record<string, MediaListItem[]> | null = null
     setLocalGrouped(prev => {
+      capturedSnapshot = Object.fromEntries(
+        Object.entries(prev).map(([k, v]) => [k, [...v]])
+      ) as Record<string, MediaListItem[]>
       const next = { ...prev }
       for (const key of Object.keys(next)) {
         next[key] = next[key].filter(i => i.id !== id)
@@ -171,11 +175,12 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
     })
     const result = await removeFromList(id)
     if ('error' in result) {
+      if (capturedSnapshot) setLocalGrouped(capturedSnapshot)
       setActionError((result as { error: string }).error)
     } else {
       setActionError(null)
+      router.refresh()
     }
-    router.refresh()
   }
 
   async function handleDeleteList(listType: string) {
@@ -222,7 +227,7 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
   )
 
   function handleDragStart(event: DragStartEvent) {
-    const id = event.active.id as string
+    const id = String(event.active.id)
     const listType = event.active.data.current?.listType as string
     const item = (localGrouped[listType] ?? []).find(i => i.id === id) ?? null
     setActiveItem(item)
@@ -233,15 +238,15 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
     setActiveItem(null)
     if (!over) return
 
-    const activeId = active.id as string
+    const activeId = String(active.id)
     const activeListType = active.data.current?.listType as string
-    const overListType = (over.data.current?.listType ?? over.id) as string
+    const overListType = (over.data.current?.listType as string | undefined) ?? String(over.id)
 
     if (activeListType === overListType) {
       const items = localGrouped[activeListType] ?? []
       const oldIndex = items.findIndex(i => i.id === activeId)
       if (oldIndex < 0) return
-      const overId = over.id as string
+      const overId = String(over.id)
       let newIndex = items.findIndex(i => i.id === overId)
       if (newIndex < 0) newIndex = items.length - 1
       if (oldIndex === newIndex) return
@@ -252,20 +257,26 @@ export function ProfileClient({ user, lists, preferredGenres: _preferredGenres, 
         if ('error' in result) setActionError((result as { error: string }).error)
       })
     } else {
-      const snapshot = { ...localGrouped }
       const movedItem = (localGrouped[activeListType] ?? []).find(i => i.id === activeId)
       if (!movedItem) return
 
-      setLocalGrouped(prev => ({
-        ...prev,
-        [activeListType]: (prev[activeListType] ?? []).filter(i => i.id !== activeId),
-        [overListType]: [...(prev[overListType] ?? []), { ...movedItem, list_type: overListType }],
-      }))
+      let capturedSnapshot: Record<string, typeof movedItem[]> | null = null
+
+      setLocalGrouped(prev => {
+        capturedSnapshot = Object.fromEntries(
+          Object.entries(prev).map(([k, v]) => [k, [...v]])
+        ) as Record<string, MediaListItem[]>
+        return {
+          ...prev,
+          [activeListType]: (prev[activeListType] ?? []).filter(i => i.id !== activeId),
+          [overListType]: [...(prev[overListType] ?? []), { ...movedItem, list_type: overListType }],
+        }
+      })
 
       moveToList(activeId, overListType).then(result => {
         if ('error' in result) {
           setActionError((result as { error: string }).error)
-          setLocalGrouped(snapshot)
+          if (capturedSnapshot) setLocalGrouped(capturedSnapshot)
         }
       })
     }
