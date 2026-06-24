@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useSortable, SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -106,8 +107,10 @@ export function DroppableMiniGrid({
 
   const highlight = isDragActive && isOver
 
+  const itemIds = useMemo(() => items.map(i => i.id), [items])
+
   return (
-    <SortableContext items={items.map(i => i.id)} strategy={rectSortingStrategy}>
+    <SortableContext items={itemIds} strategy={rectSortingStrategy}>
       <div
         ref={setNodeRef}
         style={{
