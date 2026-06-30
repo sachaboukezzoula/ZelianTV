@@ -127,6 +127,11 @@ export async function deleteProfile(id: string): Promise<{ error: string } | Rec
   return {}
 }
 
+export async function clearActiveProfile(): Promise<void> {
+  const c = await cookies()
+  c.delete(PROFILE_COOKIE)
+}
+
 export async function setActiveProfile(profileId: string): Promise<{ error: string } | Record<string, never>> {
   const user = await getAuthUser()
   if (!user) return { error: 'Non connecté' }

@@ -95,12 +95,15 @@ export async function getUserLists(): Promise<string[]> {
   if (!ctx) return []
 
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('user_media_lists')
-    .select('list_type')
-    .eq('profile_id', ctx.profileId)
+  // Fusionne les listes « tag » (films présents) ET les listes-entités vides (user_lists)
+  const [{ data: mediaRows }, { data: listRows }] = await Promise.all([
+    admin.from('user_media_lists').select('list_type').eq('profile_id', ctx.profileId),
+    admin.from('user_lists').select('name').eq('profile_id', ctx.profileId),
+  ])
 
-  return [...new Set((data ?? []).map((d: { list_type: string }) => d.list_type))]
+  const fromMedia = (mediaRows ?? []).map((d: { list_type: string }) => d.list_type)
+  const fromEntities = (listRows ?? []).map((d: { name: string }) => d.name)
+  return [...new Set([...fromMedia, ...fromEntities])]
 }
 
 export async function getWatchlistStatus(tmdbId: number, mediaType: MediaType) {
@@ -196,4 +199,18 @@ export async function moveToList(
 
   revalidatePath('/profil')
   return {}
+}
+
+export async function getProfileStats(profileId: string): Promise<{ mediaCount: number; listCount: number }> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('user_media_lists')
+    .select('list_type')
+    .eq('profile_id', profileId)
+
+  if (!data) return { mediaCount: 0, listCount: 0 }
+  return {
+    mediaCount: data.length,
+    listCount: new Set(data.map((d: { list_type: string }) => d.list_type)).size,
+  }
 }

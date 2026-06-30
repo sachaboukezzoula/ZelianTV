@@ -72,6 +72,17 @@ export async function uploadProfileAvatarAction(formData: FormData, profileId: s
   const { data: { publicUrl } } = admin.storage.from('profile-avatars').getPublicUrl(fileName)
   const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`
 
+  // Persister l'URL dans profiles.avatar_url : source de vérité unique lue partout
+  // (picker /profils, navbar, onglet Paramètres). Garantit la cohérence de la photo.
+  const { error: dbError } = await admin
+    .from('profiles')
+    .update({ avatar_url: cacheBustedUrl })
+    .eq('id', profileId)
+    .eq('user_id', user.id)
+
+  if (dbError) return { error: `Enregistrement échoué : ${dbError.message}` }
+
   revalidatePath('/profils')
+  revalidatePath('/profil')
   return { url: cacheBustedUrl }
 }
