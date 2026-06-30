@@ -45,7 +45,7 @@ export function PosterPlayer({ posterSrc, alt, videoKey, title }: Props) {
         />
         {videoKey && (
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/poster:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-[#f97316] flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center shadow-lg">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
