@@ -17,7 +17,7 @@ export function YoutubePlayer({ videoKey, title }: Props) {
           onClick={() => setLoaded(true)}
           className="absolute inset-0 flex items-center justify-center gap-3 hover:bg-white/5 transition-colors w-full"
         >
-          <div className="w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white">
               <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>

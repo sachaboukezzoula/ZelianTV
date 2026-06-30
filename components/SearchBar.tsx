@@ -40,7 +40,7 @@ export function SearchBar() {
 
   return (
     <div ref={ref} className="relative w-full">
-      <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#2e2e2e] rounded-full px-3 py-1.5 focus-within:border-[#f97316] transition-colors">
+      <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#2e2e2e] rounded-full px-3 py-1.5 focus-within:border-accent transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#555] shrink-0">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
@@ -72,7 +72,7 @@ export function SearchBar() {
                   <p className="text-white text-xs truncate">{getTitle(media)}</p>
                   <p className="text-[#555] text-[10px]">{type === 'movie' ? 'Film' : 'Série'}</p>
                 </div>
-                <span className="text-[#f97316] text-[10px] ml-auto shrink-0">★ {media.vote_average.toFixed(1)}</span>
+                <span className="text-accent text-[10px] ml-auto shrink-0">★ {media.vote_average.toFixed(1)}</span>
               </Link>
             )
           })}
