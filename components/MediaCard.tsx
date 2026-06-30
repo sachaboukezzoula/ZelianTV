@@ -36,11 +36,12 @@ export function MediaCard({ media, mediaType }: Props) {
             </div>
           )}
           <div className="media-card-overlay">
-            <div style={{width:44,height:44,borderRadius:'50%',backgroundColor:'#f97316',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                <polygon points="5 3 19 12 5 21 5 3" />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 36, padding: '0 16px', borderRadius: 8, background: 'var(--accent)', color: '#0a0a0c', fontSize: 12.5, fontWeight: 700, boxShadow: '0 6px 20px var(--accent-glow)' }}>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M5 3.5l8 4.5-8 4.5z" />
               </svg>
-            </div>
+              Voir la fiche
+            </span>
           </div>
         </div>
 
@@ -48,7 +49,7 @@ export function MediaCard({ media, mediaType }: Props) {
         <div className="px-2.5 py-2">
           <p className="text-sm font-medium text-gray-200 truncate">{title}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[#f97316] text-xs font-semibold">★ {media.vote_average.toFixed(1)}</span>
+            <span className="text-accent text-xs font-semibold">★ {media.vote_average.toFixed(1)}</span>
             {year && <span className="text-[#555] text-xs">{year}</span>}
           </div>
         </div>

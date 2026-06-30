@@ -48,10 +48,13 @@ export async function getRecommendations(
 
   const watchedSet = new Set(watched.map(w => w.tmdb_id))
 
-  const [movies, series] = await Promise.all([
-    discoverByGenre(topGenres.join(','),'movie'),
-    discoverByGenre(topGenres.join(','),'tv'),
+  const [moviesResult, seriesResult] = await Promise.allSettled([
+    discoverByGenre(topGenres.join(','), 'movie'),
+    discoverByGenre(topGenres.join(','), 'tv'),
   ])
+
+  const movies = moviesResult.status === 'fulfilled' ? moviesResult.value : []
+  const series = seriesResult.status === 'fulfilled' ? seriesResult.value : []
 
   return filterOutWatched([...movies, ...series], watchedSet).slice(0, limit)
 }

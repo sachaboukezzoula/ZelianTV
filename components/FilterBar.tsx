@@ -60,7 +60,7 @@ export function FilterBar({ genres }: Props) {
           onClick={() => setParam('type', 'movie')}
           className={`shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
             type === 'movie'
-              ? 'bg-[#f97316] text-white'
+              ? 'bg-accent text-white'
               : 'text-[#666] border border-[#2a2a2a] hover:border-[#444]'
           }`}
         >
@@ -70,7 +70,7 @@ export function FilterBar({ genres }: Props) {
           onClick={() => setParam('type', 'tv')}
           className={`shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
             type === 'tv'
-              ? 'bg-[#f97316] text-white'
+              ? 'bg-accent text-white'
               : 'text-[#666] border border-[#2a2a2a] hover:border-[#444]'
           }`}
         >
@@ -85,7 +85,7 @@ export function FilterBar({ genres }: Props) {
             onClick={() => setParam('genre', genreId === String(g.id) ? '' : String(g.id))}
             className={`shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
               genreId === String(g.id)
-                ? 'bg-[#f97316]/20 text-[#f97316] border border-[#f97316]'
+                ? 'bg-accent/20 text-accent border border-accent'
                 : 'bg-[#1c1c1c] text-[#666] hover:text-[#999]'
             }`}
           >
