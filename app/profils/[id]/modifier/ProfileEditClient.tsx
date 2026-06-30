@@ -34,6 +34,7 @@ function compressImage(file: File, maxDim: number, quality: number): Promise<Blo
   })
 }
 
+const COLOR_NONE = '#1e1e1e'
 const COLORS = ['#f97316', '#2563eb', '#16a34a', '#7c3aed', '#ca8a04', '#0891b2', '#dc2626', '#db2777']
 
 interface Props {
@@ -119,6 +120,13 @@ export function ProfileEditClient({ profile, canDelete }: Props) {
         <div>
           <p style={{ color: '#aaa', fontSize: '0.75rem', marginBottom: '0.5rem' }}>Couleur</p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* Aucune couleur */}
+            <button type="button" onClick={() => setColor(COLOR_NONE)} title="Aucune"
+              style={{ width: 28, height: 28, borderRadius: 4, background: '#232323', border: '1px solid #444',
+                cursor: 'pointer', outline: color === COLOR_NONE ? '2px solid #fff' : '2px solid transparent',
+                outlineOffset: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <svg width="18" height="18" viewBox="0 0 18 18"><line x1="2" y1="16" x2="16" y2="2" stroke="#666" strokeWidth="1.5"/></svg>
+            </button>
             {COLORS.map(c => (
               <button key={c} type="button" onClick={() => setColor(c)}
                 style={{ width: 28, height: 28, borderRadius: 4, background: c, border: 'none', cursor: 'pointer',
@@ -135,7 +143,7 @@ export function ProfileEditClient({ profile, canDelete }: Props) {
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button type="submit" disabled={loading || !name.trim()}
-            style={{ flex: 1, background: '#f97316', color: '#fff', border: 'none', borderRadius: 6, padding: '10px', fontWeight: 600, cursor: 'pointer', opacity: loading || !name.trim() ? 0.6 : 1 }}>
+            style={{ flex: 1, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '10px', fontWeight: 600, cursor: 'pointer', opacity: loading || !name.trim() ? 0.6 : 1 }}>
             {loading ? '...' : 'Enregistrer'}
           </button>
           <button type="button" onClick={() => router.back()}

@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getProfiles } from '@/app/actions/profiles'
+import { getProfileStats } from '@/app/actions/watchlist'
 import { ProfilesClient } from './ProfilesClient'
 
 export default async function ProfilsPage() {
@@ -12,8 +13,14 @@ export default async function ProfilsPage() {
 
   const profiles = await getProfiles()
 
-  // Nouveau user sans profil → forcer la création
   if (profiles.length === 0) redirect('/profils/nouveau')
 
-  return <ProfilesClient profiles={profiles} />
+  const profilesWithStats = await Promise.all(
+    profiles.map(async (p) => {
+      const stats = await getProfileStats(p.id)
+      return { ...p, ...stats }
+    })
+  )
+
+  return <ProfilesClient profiles={profilesWithStats} />
 }
