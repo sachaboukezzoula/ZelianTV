@@ -10,6 +10,7 @@ import {
   getPopularTv,
   getMovieGenres,
   getTvGenres,
+  getVideos,
   discoverByGenre,
   filterWithContent,
 } from '@/lib/tmdb'
@@ -33,21 +34,24 @@ export default async function Home({ searchParams }: PageProps) {
     getTvGenres(),
   ])
 
-  const hero = trendingAll[0]
-  const heroType = (hero?.media_type as 'movie' | 'tv') ?? 'movie'
+  const heroType = mediaType
+  const hero = mediaType === 'tv' ? trendingTv[0] : trendingMovies[0]
   const genres = type === 'tv' ? tvGenres : movieGenres
 
   const rawTrending = type === 'tv' ? trendingTv : trendingMovies
 
-  const [trending, filteredMovies, filteredSeries] = await Promise.all([
+  const [trending, filteredMovies, filteredSeries, heroVideos] = await Promise.all([
     filterWithContent(rawTrending, mediaType),
     filterWithContent(movies, 'movie'),
     filterWithContent(series, 'tv'),
+    hero ? getVideos(hero.id, heroType).catch(() => []) : Promise.resolve([]),
   ])
+
+  const heroTrailerKey = heroVideos[0]?.key
 
   return (
     <div>
-      {hero && <HeroBanner media={hero} mediaType={heroType} />}
+      {hero && <HeroBanner media={hero} mediaType={heroType} trailerKey={heroTrailerKey} />}
 
       <Suspense fallback={null}>
         <FilterBar genres={genres} />

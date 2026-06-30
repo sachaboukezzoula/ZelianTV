@@ -1,0 +1,12 @@
+﻿{
+    "initialized_via":  "retro",
+    "schema_version":  1,
+    "project_id":  "ada9b167-bcc7-4651-8582-f332c05d6dce",
+    "initialized_at":  "2026-06-24T16:14:11Z",
+    "stack":  "Next.js 16.2.9 (App Router)",
+    "framework_version":  "2.5.8",
+    "monorepo":  false,
+    "apps":  [
+
+             ]
+}
