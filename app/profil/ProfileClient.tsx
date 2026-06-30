@@ -11,7 +11,6 @@ import { removeFromList, reorderItems, moveToList, toggleWatchlist } from '@/app
 import { createList } from '@/app/actions/lists'
 import type { ListEntity } from '@/app/actions/lists'
 import { likeMedia, toggleLike } from '@/app/actions/likes'
-import type { MediaType } from '@/lib/tmdb'
 import { useTheme } from '@/components/ThemeProvider'
 import { uploadProfileAvatarAction } from '@/app/actions/avatar'
 import { changeEmailAction } from '@/app/actions/profile'
